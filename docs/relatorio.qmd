@@ -1,0 +1,26 @@
+---
+title: "Relatório – State of Data Brazil (2021–2025) e Mercado de Trabalho em Dados"
+author: "Seu Nome"
+format: pdf
+---
+
+# Introdução
+
+Descreva aqui o contexto do problema, a motivação do estudo e os objetivos da análise,
+relacionando a pesquisa *State of Data Brazil* com o mercado de trabalho em Dados/Analytics.
+
+# Metodologia
+
+- Descrição das bases de dados utilizadas (State of Data + fonte externa)
+- Coleta automatizada (web scraping/API)
+- Processos de limpeza, padronização e integração
+- Modelos de Recuperação da Informação utilizados (ex.: BM25)
+
+# Resultados
+
+Apresente tabelas, gráficos e resultados das consultas de teste aos modelos de RI,
+discutindo os achados de forma crítica.
+
+# Conclusão
+
+Sintetize os principais insights obtidos, limitações do trabalho e possíveis extensões futuras.
