@@ -1,51 +1,91 @@
-import os
+"""
+Limpeza e padronização da pesquisa State of Data Brazil.
+
+Como os CSVs podem variar um pouco entre anos, fazemos uma limpeza genérica:
+- padroniza nomes de colunas
+- adiciona coluna 'ano' quando possível
+- remove duplicados e linhas totalmente vazias
+"""
+
 from pathlib import Path
+from typing import List
+
 import pandas as pd
 
+RAW_DIR = Path("data/raw/state_of_data")
+OUT_FILE = Path("data/processed/state_of_data_clean.csv")
 
-def carregar_arquivos_state_of_data(raw_dir: str = "data/raw/state_of_data"):
-    raw_path = Path(raw_dir)
-    arquivos = list(raw_path.glob("*.csv"))
-    if not arquivos:
+
+def _inferir_ano(nome_arquivo: str) -> str:
+    """Tenta extrair o ano a partir do nome do arquivo, fallback 'desconhecido'."""
+    for ano in ("2021", "2022", "2023", "2024", "2025"):
+        if ano in nome_arquivo:
+            return ano
+    return "desconhecido"
+
+
+def carregar_arquivos_state_of_data(raw_dir: Path = RAW_DIR) -> List[pd.DataFrame]:
+    """
+    Lê todos os CSVs de State of Data e devolve uma lista de DataFrames.
+    """
+    if not raw_dir.exists():
         raise FileNotFoundError(
-            f"Nenhum CSV encontrado em {raw_path}. "
-            "Certifique-se de que a coleta foi executada."
+            f"Diretório {raw_dir} não encontrado. Rode a coleta antes."
         )
+
+    arquivos = list(raw_dir.glob("*.csv"))
+    if not arquivos:
+        raise FileNotFoundError(f"Nenhum CSV encontrado em {raw_dir}.")
+
     dfs = []
     for arq in arquivos:
-        print("Lendo:", arq)
+        print(f"[StateClean] Lendo {arq.name} ...")
         df = pd.read_csv(arq)
         df["arquivo_origem"] = arq.name
+        df["ano"] = _inferir_ano(arq.name)
         dfs.append(df)
-    return pd.concat(dfs, ignore_index=True)
+
+    return dfs
 
 
-def limpar_state_of_data(df: pd.DataFrame) -> pd.DataFrame:
-    # Exemplo de limpeza mínima. Ajuste conforme os nomes reais das colunas.
-    df = df.copy()
-    # Padronizar nomes das colunas
-    df.columns = [c.strip().lower().replace(" ", "_") for c in df.columns]
+def limpar_state_of_data(dfs: List[pd.DataFrame]) -> pd.DataFrame:
+    """
+    Aplica limpeza genérica:
+    - padroniza nomes de colunas
+    - remove linhas totalmente vazias
+    - remove duplicados
+    """
+    df = pd.concat(dfs, ignore_index=True)
 
-    # Remover duplicados
-    df = df.drop_duplicates()
+    # padronizar nomes de colunas
+    df.columns = (
+        df.columns.str.strip()
+        .str.lower()
+        .str.replace(" ", "_")
+        .str.replace(r"[^0-9a-zA-Z_]", "", regex=True)
+    )
 
-    # Exemplo: remover linhas totalmente vazias
+    # remover linhas completamente vazias
     df = df.dropna(how="all")
 
+    # remover duplicados
+    df = df.drop_duplicates()
+
+    print(f"[StateClean] Após limpeza: {df.shape[0]} linhas, {df.shape[1]} colunas.")
     return df
 
 
 def pipeline_limpeza_state_of_data(
-    raw_dir: str = "data/raw/state_of_data",
-    out_file: str = "data/processed/state_of_data_clean.csv",
-) -> None:
-    df = carregar_arquivos_state_of_data(raw_dir)
-    df_clean = limpar_state_of_data(df)
+    raw_dir: Path = RAW_DIR,
+    out_file: Path = OUT_FILE,
+) -> Path:
+    dfs = carregar_arquivos_state_of_data(raw_dir)
+    df_clean = limpar_state_of_data(dfs)
 
-    out_path = Path(out_file)
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    df_clean.to_csv(out_path, index=False)
-    print("Arquivo limpo salvo em:", out_path.resolve())
+    out_file.parent.mkdir(parents=True, exist_ok=True)
+    df_clean.to_csv(out_file, index=False)
+    print(f"[StateClean] Arquivo limpo salvo em: {out_file.resolve()}")
+    return out_file
 
 
 if __name__ == "__main__":
